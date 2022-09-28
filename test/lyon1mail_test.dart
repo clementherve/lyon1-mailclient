@@ -41,7 +41,7 @@ void main() {
     expect((await _mailClient.fetchMessages(10)).isNone(), equals(true));
   });
 
-  test('toggle read status of first message', () async {
+  test('toggle read status of latest email', () async {
     await _mailClient.login();
     final List<Mail> mails =
         (await _mailClient.fetchMessages(10)).getOrElse(() => []);
@@ -62,5 +62,21 @@ void main() {
         !isFirstMailSeen);
 
     await _mailClient.logout();
+  });
+
+  test('send one email to self', () async {
+    await _mailClient.login();
+    await _mailClient.sendEmail(
+      senderEmail: 'name.lastname@etu.univ-lyon1.fr',
+      senderName: 'name.lastname',
+      recipientEmail: 'name.lastname@etu.univ-lyon1.fr',
+      recipientName: 'name.lastname',
+      subject: 'test',
+      body: 'bodytest',
+    );
+  });
+
+  test('delete latest email', () async {
+    // todo
   });
 }

@@ -27,10 +27,12 @@ class Lyon1Mail {
     return _client.isLoggedIn;
   }
 
-  Future<Option<List<Mail>>> fetchMessages(final int end,
-      {int? start,
-      bool unreadOnly = false,
-      bool hasAttachmentOnly = false}) async {
+  Future<Option<List<Mail>>> fetchMessages(
+    final int end, {
+    int? start,
+    bool unreadOnly = false,
+    bool hasAttachmentOnly = false,
+  }) async {
     if (!_client.isLoggedIn) {
       return None();
     }
@@ -71,7 +73,40 @@ class Lyon1Mail {
         .toList());
   }
 
-  Future<void> markAsRead(int id) async {
+  // TODO: allow multirecipient
+  // TODO: autodiscover own email address
+  Future<void> sendEmail({
+    required String senderEmail,
+    required String senderName,
+    required String recipientEmail,
+    required String recipientName,
+    required String subject,
+    required String body,
+  }) async {
+    await _client.selectInbox();
+
+    final builder = MessageBuilder.prepareMultipartAlternativeMessage()
+      ..subject = subject
+      ..text = body
+      ..from = [MailAddress(senderName, senderEmail)]
+      ..to = [
+        MailAddress(recipientName, recipientEmail),
+      ];
+
+    await _client.appendMessage(builder.buildMimeMessage());
+  }
+
+  // untested yet
+  Future<void> delete(final int id) async {
+    if (!_client.isLoggedIn) {
+      return;
+    }
+    final MessageSequence sequence = MessageSequence();
+    sequence.add(id);
+    _client.markDeleted(sequence);
+  }
+
+  Future<void> markAsRead(final int id) async {
     if (!_client.isLoggedIn) {
       return;
     }
@@ -80,7 +115,7 @@ class Lyon1Mail {
     _client.markSeen(sequence);
   }
 
-  Future<void> markAsUnread(int id) async {
+  Future<void> markAsUnread(final int id) async {
     if (!_client.isLoggedIn) {
       return;
     }
