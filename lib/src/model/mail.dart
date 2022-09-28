@@ -40,6 +40,10 @@ class Mail {
     return _originalMessage.hasAttachments();
   }
 
+  int? getSequenceId() {
+    return _originalMessage.sequenceId;
+  }
+
   List<String> getAttachmentsNames() {
     final List<String> fileNames = [];
     final List<MimePart> parts = _originalMessage.allPartsFlat;

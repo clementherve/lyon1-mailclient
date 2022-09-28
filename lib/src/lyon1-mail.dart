@@ -71,6 +71,24 @@ class Lyon1Mail {
         .toList());
   }
 
+  Future<void> markAsRead(int id) async {
+    if (!_client.isLoggedIn) {
+      return;
+    }
+    final MessageSequence sequence = MessageSequence();
+    sequence.add(id);
+    _client.markSeen(sequence);
+  }
+
+  Future<void> markAsUnread(int id) async {
+    if (!_client.isLoggedIn) {
+      return;
+    }
+    final MessageSequence sequence = MessageSequence();
+    sequence.add(id);
+    _client.markUnseen(sequence);
+  }
+
   Future<void> logout() async {
     await _client.logout();
   }

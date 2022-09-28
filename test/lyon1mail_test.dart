@@ -40,4 +40,27 @@ void main() {
   test('fetch 10 messages without being logged in', () async {
     expect((await _mailClient.fetchMessages(10)).isNone(), equals(true));
   });
+
+  test('toggle read status of first message', () async {
+    await _mailClient.login();
+    final List<Mail> mails =
+        (await _mailClient.fetchMessages(10)).getOrElse(() => []);
+
+    final bool isFirstMailSeen = mails.first.isSeen();
+
+    if (isFirstMailSeen) {
+      await _mailClient.markAsUnread(mails.first.getSequenceId()!);
+    } else {
+      await _mailClient.markAsRead(mails.first.getSequenceId()!);
+    }
+
+    expect(
+        (await _mailClient.fetchMessages(10))
+            .getOrElse(() => [])
+            .first
+            .isSeen(),
+        !isFirstMailSeen);
+
+    await _mailClient.logout();
+  });
 }
