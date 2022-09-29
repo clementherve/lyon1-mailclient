@@ -28,6 +28,10 @@ class Mail {
     return _originalMessage.fromEmail ?? "n/a";
   }
 
+  String getReceiver() {
+    return _originalMessage.to.toString() ?? "n/a";
+  }
+
   DateTime getDate() {
     return _originalMessage.decodeDate() ?? DateTime.now();
   }
