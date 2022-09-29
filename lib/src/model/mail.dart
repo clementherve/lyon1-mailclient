@@ -29,7 +29,12 @@ class Mail {
   }
 
   String getReceiver() {
-    return _originalMessage.to.toString() ?? "n/a";
+    String receiver = "";
+    for (MailAddress i in _originalMessage.to!) {
+      receiver += i.email + ", ";
+    }
+    receiver = receiver.substring(0, receiver.length - 2);
+    return receiver ?? "n/a";
   }
 
   DateTime getDate() {
