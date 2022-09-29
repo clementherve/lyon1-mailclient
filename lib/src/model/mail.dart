@@ -1,27 +1,24 @@
 import 'dart:math';
 
-import 'package:enough_mail/imap/imap_client.dart';
-import 'package:enough_mail/imap/message_sequence.dart';
 import 'package:enough_mail/mail_address.dart';
 import 'package:enough_mail/message_flags.dart';
 import 'package:enough_mail/mime_message.dart';
 
 class Mail {
-  final ImapClient _client;
   final MimeMessage _originalMessage;
 
-  Mail(this._client, this._originalMessage);
+  Mail(this._originalMessage);
 
   String getSubject() {
     return _originalMessage.decodeSubject() ?? "";
   }
 
-  List<String> getCC() {
-    const List<String> cc = [];
+  List<String> getRecipients() {
+    const List<String> recipients = [];
     for (MailAddress m in _originalMessage.cc ?? []) {
-      cc.add(m.email);
+      recipients.add(m.email);
     }
-    return cc;
+    return recipients;
   }
 
   String getSender() {
@@ -58,8 +55,11 @@ class Mail {
     return fileNames;
   }
 
-  String getBody(
-      {removeTrackingImages = false, excerpt = true, excerptLength = 100}) {
+  String getBody({
+    removeTrackingImages = false,
+    excerpt = true,
+    excerptLength = 100,
+  }) {
     if (excerpt) {
       int length = _originalMessage.decodeTextPlainPart()?.length ?? 0;
       int maxsubstr = min(length, excerptLength);
@@ -75,26 +75,5 @@ class Mail {
       }
       return html ?? (_originalMessage.decodeTextPlainPart() ?? "-");
     }
-  }
-
-  Future<void> markAsSeen() async {
-    final MessageSequence sequence = MessageSequence();
-    sequence.addMessage(_originalMessage);
-    await _client.markSeen(sequence);
-    _originalMessage.isSeen = true;
-  }
-
-  Future<void> markAsUnseen() async {
-    final MessageSequence sequence = MessageSequence();
-    sequence.addMessage(_originalMessage);
-    await _client.markUnseen(sequence);
-    _originalMessage.isSeen = false;
-  }
-
-  Future<void> delete() async {
-    final MessageSequence sequence = MessageSequence();
-    sequence.addMessage(_originalMessage);
-    await _client.markDeleted(sequence);
-    _originalMessage.isDeleted = true;
   }
 }

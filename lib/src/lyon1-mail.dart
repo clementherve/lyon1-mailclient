@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 import 'package:dartz/dartz.dart';
 import 'package:enough_mail/enough_mail.dart';
+import 'package:lyon1mail/src/model/address.dart';
 
 import 'model/mail.dart';
 import 'config/config.dart';
@@ -65,7 +66,7 @@ class Lyon1Mail {
         '(FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[])');
 
     for (final MimeMessage email in fetchResult.messages) {
-      mails.add(Mail(_client, email));
+      mails.add(Mail(email));
     }
 
     return Some(mails.reversed
@@ -73,13 +74,10 @@ class Lyon1Mail {
         .toList());
   }
 
-  // TODO: allow multirecipient
   // TODO: autodiscover own email address
   Future<void> sendEmail({
-    required String senderEmail,
-    required String senderName,
-    required String recipientEmail,
-    required String recipientName,
+    required Address sender,
+    required List<Address> recipients,
     required String subject,
     required String body,
   }) async {
@@ -88,10 +86,8 @@ class Lyon1Mail {
     final builder = MessageBuilder.prepareMultipartAlternativeMessage()
       ..subject = subject
       ..text = body
-      ..from = [MailAddress(senderName, senderEmail)]
-      ..to = [
-        MailAddress(recipientName, recipientEmail),
-      ];
+      ..from = [MailAddress(sender.name, sender.email)]
+      ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
 
     await _client.appendMessage(builder.buildMimeMessage());
   }
@@ -104,12 +100,14 @@ class Lyon1Mail {
     final MessageSequence sequence = MessageSequence();
     sequence.add(id);
     _client.markDeleted(sequence);
+    _client.expunge();
   }
 
   Future<void> markAsRead(final int id) async {
     if (!_client.isLoggedIn) {
       return;
     }
+
     final MessageSequence sequence = MessageSequence();
     sequence.add(id);
     _client.markSeen(sequence);

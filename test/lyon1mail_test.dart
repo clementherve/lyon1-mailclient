@@ -1,11 +1,24 @@
 import 'dart:io';
 
 import 'package:lyon1mail/lyon1mail.dart';
+import 'package:lyon1mail/src/model/address.dart';
 import 'package:test/test.dart';
 import 'package:dotenv/dotenv.dart' show env, isEveryDefined, load;
 
 void main() {
   late Lyon1Mail _mailClient;
+
+  Future<void> sendDummyMail() async {
+    await _mailClient.login();
+    await _mailClient.sendEmail(
+      sender: Address(env['email']!, 'nom de test'),
+      recipients: [
+        Address(env['email']!, 'nom de test 2'),
+      ],
+      subject: 'test',
+      body: 'bodytest',
+    );
+  }
 
   setUpAll(() {
     load('test/.env');
@@ -65,18 +78,38 @@ void main() {
   });
 
   test('send one email to self', () async {
+    await sendDummyMail();
+
     await _mailClient.login();
-    await _mailClient.sendEmail(
-      senderEmail: 'name.lastname@etu.univ-lyon1.fr',
-      senderName: 'name.lastname',
-      recipientEmail: 'name.lastname@etu.univ-lyon1.fr',
-      recipientName: 'name.lastname',
-      subject: 'test',
-      body: 'bodytest',
-    );
+    final List<Mail> mailsBeforeDeletion =
+        (await _mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsBeforeDeletion.isNotEmpty, true);
+
+    final int latestMessageId = mailsBeforeDeletion.first.getSequenceId()!;
+    await _mailClient.delete(latestMessageId);
+
+    final List<Mail> mailsAfterDeletion =
+        (await _mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsAfterDeletion.isNotEmpty, true);
+    expect(mailsAfterDeletion.first.getSequenceId() != latestMessageId, true);
+    await _mailClient.logout();
   });
 
   test('delete latest email', () async {
-    // todo
+    await sendDummyMail(); // to make sure we dont delete important mails :)
+
+    await _mailClient.login();
+    final List<Mail> mailsBeforeDeletion =
+        (await _mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsBeforeDeletion.isNotEmpty, true);
+
+    final int latestMessageId = mailsBeforeDeletion.first.getSequenceId()!;
+    await _mailClient.delete(latestMessageId);
+
+    final List<Mail> mailsAfterDeletion =
+        (await _mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsAfterDeletion.isNotEmpty, true);
+    expect(mailsAfterDeletion.first.getSequenceId() != latestMessageId, true);
+    await _mailClient.logout();
   });
 }
