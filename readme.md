@@ -15,14 +15,22 @@ if (emailOpt.isNone()) {
 }
 
 for (final Mail mail in emailOpt.toIterable().first) {
-print("${mail.getSender()} sent ${mail.getSubject()} @${mail.getDate().toIso8601String()}");
-print("\tseen: ${mail.isSeen()}");
-print("\t${mail.getBody(excerpt: true, excerptLength: 50)}");
-print("\thasPJ: ${mail.hasAttachments()}");
-mail.getAttachmentsNames().forEach((fname) {
-    print("\t\t$fname");
-});
+    print("${mail.getSender()} sent ${mail.getSubject()} @${mail.getDate().toIso8601String()}");
+    print("\tseen: ${mail.isSeen()}");
+    print("\t${mail.getBody(excerpt: true, excerptLength: 50)}");
+    print("\thasPJ: ${mail.hasAttachments()}");
+    mail.getAttachmentsNames().forEach((fname) {
+        print("\t\t$fname");
+    });
 }
 
 await mailClient.logout();
+```
+
+## Tests
+In your `test` folder, create a `.env` file containing the following:
+```
+    username: change me
+    password: change_me
+    email: p1234567@etu.univ-lyon1.fr
 ```
