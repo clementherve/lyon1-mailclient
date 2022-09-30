@@ -71,7 +71,7 @@ class Mail {
   }) {
     if (excerpt) {
       int length = _originalMessage.decodeTextPlainPart()?.length ?? 0;
-      int maxsubstr = min(length, excerptLength);
+      int maxsubstr = min(length - 1, excerptLength);
       return _originalMessage
               .decodeTextPlainPart()
               ?.replaceAll("\n", "")
