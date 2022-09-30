@@ -20,11 +20,13 @@ void main() {
     );
   }
 
+  late String username;
+  late String password;
   setUpAll(() {
     load('test/.env');
 
-    String username = Platform.environment['username'] ?? "";
-    String password = Platform.environment['password'] ?? "";
+    username = Platform.environment['username'] ?? "";
+    password = Platform.environment['password'] ?? "";
     if (isEveryDefined(['username', 'password'])) {
       username = env['username'] ?? "";
       password = env['password'] ?? "";
@@ -46,6 +48,7 @@ void main() {
     await _mailClient.login();
     final List<Mail> mails =
         (await _mailClient.fetchMessages(10)).getOrElse(() => []);
+    print(mails);
     expect(mails.length, equals(10));
     await _mailClient.logout();
   });
@@ -93,6 +96,13 @@ void main() {
     expect(mailsAfterDeletion.isNotEmpty, true);
     expect(mailsAfterDeletion.first.getSequenceId() != latestMessageId, true);
     await _mailClient.logout();
+  });
+
+  test('resolve contact', () async {
+    await _mailClient.login();
+    print("coucou");
+    String email = (await _mailClient.resolveContact(username));
+    expect(email, Platform.environment['email']);
   });
 
   test('delete latest email', () async {
