@@ -25,6 +25,15 @@ class Mail {
     return _originalMessage.fromEmail ?? "n/a";
   }
 
+  String getReceiver() {
+    String receiver = "";
+    for (MailAddress i in _originalMessage.to!) {
+      receiver += i.email + ", ";
+    }
+    receiver = receiver.substring(0, receiver.length - 2);
+    return receiver ?? "n/a";
+  }
+
   DateTime getDate() {
     return _originalMessage.decodeDate() ?? DateTime.now();
   }
@@ -61,7 +70,9 @@ class Mail {
     excerptLength = 100,
   }) {
     if (excerpt) {
-      int length = _originalMessage.decodeTextPlainPart()?.length ?? 0;
+      int length =
+          _originalMessage.decodeTextPlainPart()?.replaceAll("\n", "").length ??
+              0;
       int maxsubstr = min(length, excerptLength);
       return _originalMessage
               .decodeTextPlainPart()
