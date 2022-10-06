@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:lyon1mail/lyon1mail.dart';
-import 'package:lyon1mail/src/model/address.dart';
 import 'package:test/test.dart';
 import 'package:dotenv/dotenv.dart' show env, isEveryDefined, load;
 

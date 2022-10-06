@@ -31,7 +31,7 @@ class Mail {
       receiver += i.email + ", ";
     }
     receiver = receiver.substring(0, receiver.length - 2);
-    return receiver ?? "n/a";
+    return receiver;
   }
 
   DateTime getDate() {

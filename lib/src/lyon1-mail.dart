@@ -1,17 +1,17 @@
 // ignore_for_file: file_names
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:dartz/dartz.dart';
-import 'package:lyon1mail/src/model/address.dart';
 import 'package:enough_mail/enough_mail.dart' hide Response;
-import 'package:http/http.dart' as http;
-import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:cookie_jar/cookie_jar.dart';
 
-import 'model/mail.dart';
+// import 'package:dio/dio.dart';
+// import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
+import 'package:lyon1mail/src/model/address.dart';
+import 'package:requests/requests.dart';
+
 import 'config/config.dart';
+import 'model/mail.dart';
 
 class Lyon1Mail {
   late ImapClient _client;
@@ -19,8 +19,9 @@ class Lyon1Mail {
   late String _password;
   late int _nbMessages;
   late String _mailboxName;
-  Dio _dio = Dio();
-  CookieJar _cookieJar = CookieJar();
+
+  // Dio _dio = Dio();
+  // CookieJar _cookieJar = CookieJar();
 
   static const String _baseUrl = "https://mail.univ-lyon1.fr/owa/";
   static const String _loginUrl = _baseUrl + "auth.owa";
@@ -30,7 +31,7 @@ class Lyon1Mail {
     _client = ImapClient(isLogEnabled: false);
     _username = username;
     _password = password;
-    _dio.interceptors.add(CookieManager(_cookieJar));
+    // _dio.interceptors.add(CookieManager(_cookieJar));
   }
 
   Future<bool> login() async {
@@ -40,7 +41,7 @@ class Lyon1Mail {
 
     await _client.login(_username, _password);
 
-    await _cookieJar.deleteAll();
+    // await _cookieJar.deleteAll();
     var headers = {
       'User-Agent':
           'Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0',
@@ -59,9 +60,10 @@ class Lyon1Mail {
       'Sec-Fetch-Site': 'same-origin',
       'Sec-Fetch-User': '?1',
     };
-    Response reponse = await _dio.post(
+    Response reponse = await Requests.post(
       _loginUrl,
-      data: {
+      headers: headers,
+      body: {
         "destination":
             _baseUrl.substring(0, _baseUrl.length - 1), // remove trailing slash
         "flags": "4",
@@ -71,19 +73,11 @@ class Lyon1Mail {
         "passwordText": "",
         "isUtf8": "1"
       },
-      options: Options(
-          validateStatus: ((status) => status == 302),
-          contentType: "application/x-www-form-urlencoded"),
     );
-    print(await _cookieJar.loadForRequest(Uri.parse(_baseUrl)));
-    try {
-      reponse = await _dio.get(
-        _baseUrl,
-      );
-      print(reponse.headers);
-    } on DioError catch (e) {
-      print(e);
-    }
+
+    Response reponse2 = await Requests.get(
+      "https://mail.univ-lyon1.fr/owa/",
+    );
 
     return _client.isLoggedIn;
   }
@@ -187,6 +181,12 @@ class Lyon1Mail {
   }
 
   Future<String> resolveContact(String query) async {
+    // print((await _cookieJar.loadForRequest(Uri.parse(_baseUrl))));
+    for (var i
+        in (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
+            .values) {
+      print(i);
+    }
     String json =
         '{"__type":"FindPeopleJsonRequest:#Exchange","Header":{"__type":"JsonRequestHeaders:#Exchange","RequestServerVersion":"Exchange2013","TimeZoneContext":{"__type":"TimeZoneContext:#Exchange","TimeZoneDefinition":{"__type":"TimeZoneDefinitionType:#Exchange","Id":"Romance Standard Time"}}},"Body":{"__type":"FindPeopleRequest:#Exchange","IndexedPageItemView":{"__type":"IndexedPageView:#Exchange","BasePoint":"Beginning","Offset":0},"QueryString":"$query","AggregationRestriction":{"__type":"RestrictionType:#Exchange","Item":{"__type":"Or:#Exchange","Items":[{"__type":"Exists:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaEmailAddress"}},{"__type":"IsEqualTo:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaType"},"FieldURIOrConstant":{"__type":"FieldURIOrConstantType:#Exchange","Item":{"__type":"Constant:#Exchange","Value":"DistributionList"}}}]}},"PersonaShape":{"__type":"PersonaResponseShape:#Exchange","BaseShape":"Default","AdditionalProperties":[{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaAttributions"}]},"ShouldResolveOneOffEmailAddress":true,"SearchPeopleSuggestionIndex":false,"Context":[{"__type":"ContextProperty:#Exchange","Key":"AppName","Value":"OWA"},{"__type":"ContextProperty:#Exchange","Key":"AppScenario","Value":"NewMail.To"},{"__type":"ContextProperty:#Exchange","Key":"ClientSessionId","Value":""}]}}';
     Map<String, String> headers = {
@@ -200,15 +200,18 @@ class Lyon1Mail {
       'Content-Type': 'application/json; charset=utf-8',
       'X-Requested-With': 'XMLHttpRequest',
       'X-OWA-ActionName': 'ComposeForms',
-      'X-OWA-CANARY': (await _cookieJar.loadForRequest(Uri.parse(_baseUrl)))
-          .where((element) => element.name == 'X-OWA-CANARY')
-          .first
-          .value,
-      'Cookie': (await _cookieJar.loadForRequest(Uri.parse(_baseUrl)))
-          .map((e) => e.value + "; ")
-          .toString()
-          .replaceAll("(", "")
-          .replaceAll(")", ""),
+      'X-OWA-CANARY':
+          (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
+              .values
+              .firstWhere((element) {
+        print(element);
+        return element.name == "X-OWA-CANARY";
+      }).value,
+      // 'Cookie': (await _cookieJar.loadForRequest(Uri.parse(_baseUrl)))
+      //     .map((e) => e.value + "; ")
+      //     .toString()
+      //     .replaceAll("(", "")
+      //     .replaceAll(")", ""),
       // 'X-OWA-CANARY':
       //     'byLRE7qKHUqDTB90N9k5H6AQ-dgGo9oIMFy1JBbKZmT2n17RRMFZaCXKlV2QqWG2G2-vtU8CltE.',
       // 'Cookie':
@@ -224,23 +227,14 @@ class Lyon1Mail {
     http.Response response = await http.post(url, headers: headers, body: data);
     print(response.body);
     print(response.statusCode);
-    print((await _cookieJar.loadForRequest(Uri.parse(_baseUrl)))
-        .map((e) => e.value + "; ")
-        .toString());
-    print(await _cookieJar.loadForRequest(Uri.parse(_baseUrl)));
-    Response response2 = await _dio.post(_contactUrl,
-        data: json,
-        options: Options(
-          headers: headers,
-          contentType: "utf8",
-          validateStatus: (status) => true,
-        ));
     print(response.body);
 
     return "error";
   }
 
   int get nbMessage => _nbMessages;
+
   String get mailboxName => _mailboxName;
+
   bool get isAuthenticated => _client.isLoggedIn;
 }
