@@ -17,6 +17,7 @@ class Lyon1Mail {
   late String _password;
   late int _nbMessages;
   late String _mailboxName;
+  late Address emailAddress;
 
   // Dio _dio = Dio();
   // CookieJar _cookieJar = CookieJar();
@@ -30,7 +31,6 @@ class Lyon1Mail {
     _client = ImapClient(isLogEnabled: false);
     _username = username;
     _password = password;
-    // _dio.interceptors.add(CookieManager(_cookieJar));
   }
 
   Future<bool> login() async {
@@ -40,30 +40,13 @@ class Lyon1Mail {
 
     await _client.login(_username, _password);
 
-    var headers = {
-      'User-Agent':
-          'Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0',
-      'Accept':
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'Accept-Language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Origin': 'https://mail.univ-lyon1.fr',
-      'Connection': 'keep-alive',
-      'Referer':
-          'https://mail.univ-lyon1.fr/owa/auth/logon.aspx?replaceCurrent=1&url=https%3a%2f%2fmail.univ-lyon1.fr%2fowa',
-      'Upgrade-Insecure-Requests': '1',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'same-origin',
-      'Sec-Fetch-User': '?1',
-    };
-    Response res = await Requests.post(
+    await Requests.post(
       _loginUrl,
       headers: makeHeader(
         referer:
             'https://mail.univ-lyon1.fr/owa/auth/logon.aspx?replaceCurrent=1&url=https%3a%2f%2fmail.univ-lyon1.fr%2fowa',
-        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         connection: 'keep-alive',
         contentType: 'application/x-www-form-urlencoded',
       ),
@@ -79,10 +62,10 @@ class Lyon1Mail {
         "isUtf8": "1"
       },
     );
-    res = await Requests.get(
+    await Requests.get(
       "https://mail.univ-lyon1.fr/owa/",
-    ); //get last cookies
-
+    ); //get canary cookies
+    emailAddress = (await resolveContact(_username))!;
     return _client.isLoggedIn;
   }
 
@@ -132,9 +115,8 @@ class Lyon1Mail {
         .toList());
   }
 
-  // TODO: autodiscover own email address
   Future<void> sendEmail({
-    required Address sender,
+    Address? sender,
     required List<Address> recipients,
     required String subject,
     required String body,
@@ -144,7 +126,10 @@ class Lyon1Mail {
     final builder = MessageBuilder.prepareMultipartAlternativeMessage()
       ..subject = subject
       ..text = body
-      ..from = [MailAddress(sender.name, sender.email)]
+      ..from = [
+        MailAddress((sender != null) ? sender.name : emailAddress.name,
+            (sender != null) ? sender.email : emailAddress.email)
+      ]
       ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
 
     await _client.appendMessage(builder.buildMimeMessage());

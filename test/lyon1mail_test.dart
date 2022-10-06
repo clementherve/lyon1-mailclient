@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:dotenv/dotenv.dart' show env, isEveryDefined, load;
 import 'package:lyon1mail/lyon1mail.dart';
 import 'package:test/test.dart';
-import 'package:dotenv/dotenv.dart' show env, isEveryDefined, load;
 
 void main() {
   late Lyon1Mail _mailClient;
@@ -32,7 +32,6 @@ void main() {
       username = env['username'] ?? "";
       password = env['password'] ?? "";
       emailAddress = env['email'] ?? "";
-
     }
 
     if (username.isEmpty || password.isEmpty) {
@@ -51,7 +50,6 @@ void main() {
     await _mailClient.login();
     final List<Mail> mails =
         (await _mailClient.fetchMessages(10)).getOrElse(() => []);
-    print(mails);
     expect(mails.length, equals(10));
     await _mailClient.logout();
   });
@@ -103,9 +101,7 @@ void main() {
 
   test('resolve contact', () async {
     await _mailClient.login();
-    print("coucou");
     Address? email = (await _mailClient.resolveContact(username));
-    print(email);
     expect(email!.email, emailAddress);
   });
 
