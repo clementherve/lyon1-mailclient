@@ -21,14 +21,18 @@ void main() {
 
   late String username;
   late String password;
+  late String emailAddress;
   setUpAll(() {
     load('test/.env');
 
     username = Platform.environment['username'] ?? "";
     password = Platform.environment['password'] ?? "";
-    if (isEveryDefined(['username', 'password'])) {
+    emailAddress = Platform.environment['email'] ?? "";
+    if (isEveryDefined(['username', 'password', 'email'])) {
       username = env['username'] ?? "";
       password = env['password'] ?? "";
+      emailAddress = env['email'] ?? "";
+
     }
 
     if (username.isEmpty || password.isEmpty) {
@@ -100,8 +104,9 @@ void main() {
   test('resolve contact', () async {
     await _mailClient.login();
     print("coucou");
-    String email = (await _mailClient.resolveContact(username));
-    expect(email, Platform.environment['email']);
+    Address? email = (await _mailClient.resolveContact(username));
+    print(email);
+    expect(email!.email, emailAddress);
   });
 
   test('delete latest email', () async {

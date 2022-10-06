@@ -2,9 +2,10 @@
 
 import 'package:dartz/dartz.dart';
 import 'package:enough_mail/enough_mail.dart' hide Response;
-
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 import 'package:lyon1mail/src/model/address.dart';
+import 'package:lyon1mail/src/model/header_model.dart';
+import 'package:lyon1mail/src/model/query_model.dart';
 import 'package:requests/requests.dart';
 
 import 'config/config.dart';
@@ -23,6 +24,7 @@ class Lyon1Mail {
   static const String _baseUrl = "https://mail.univ-lyon1.fr/owa/";
   static const String _loginUrl = _baseUrl + "auth.owa";
   static const String _contactUrl = _baseUrl + "service.svc?action=FindPeople";
+  static const String _logoutUrl = _baseUrl + "logoff.owa";
 
   Lyon1Mail(final String username, final String password) {
     _client = ImapClient(isLogEnabled: false);
@@ -38,7 +40,6 @@ class Lyon1Mail {
 
     await _client.login(_username, _password);
 
-    // await _cookieJar.deleteAll();
     var headers = {
       'User-Agent':
           'Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0',
@@ -57,9 +58,16 @@ class Lyon1Mail {
       'Sec-Fetch-Site': 'same-origin',
       'Sec-Fetch-User': '?1',
     };
-    await Requests.post(
+    Response res = await Requests.post(
       _loginUrl,
-      headers: headers,
+      headers: makeHeader(
+        referer:
+            'https://mail.univ-lyon1.fr/owa/auth/logon.aspx?replaceCurrent=1&url=https%3a%2f%2fmail.univ-lyon1.fr%2fowa',
+        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        connection: 'keep-alive',
+        contentType: 'application/x-www-form-urlencoded',
+      ),
+      // headers: headers,
       body: {
         "destination":
             _baseUrl.substring(0, _baseUrl.length - 1), // remove trailing slash
@@ -71,9 +79,9 @@ class Lyon1Mail {
         "isUtf8": "1"
       },
     );
-   await Requests.get(
+    res = await Requests.get(
       "https://mail.univ-lyon1.fr/owa/",
-    );
+    ); //get last cookies
 
     return _client.isLoggedIn;
   }
@@ -172,60 +180,35 @@ class Lyon1Mail {
     _client.markUnseen(sequence);
   }
 
-  Future<void> logout() async {
-    await _client.logout();
+  Future<Address?> resolveContact(String query) async {
+    Response response = await Requests.post(
+      _contactUrl,
+      headers: makeHeader(
+        canary:
+            (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
+                .values
+                .firstWhere((element) {
+          return element.name == "X-OWA-CANARY";
+        }).value,
+        action: 'FindPeople',
+      ),
+      body: makeQuerry(query),
+      bodyEncoding: RequestBodyEncoding.JSON,
+    );
+    if (response.json()['Body']['ResponseClass'] == "Success") {
+      return Address(
+          response.json()['Body']['ResultSet'].first['EmailAddress']
+              ['EmailAddress'],
+          response.json()['Body']['ResultSet'].first['GivenName'] +
+              " " +
+              response.json()['Body']['ResultSet'].first['Surname']);
+    }
+    return null;
   }
 
-  Future<String> resolveContact(String query) async {
-    // print((await _cookieJar.loadForRequest(Uri.parse(_baseUrl))));
-    for (var i
-        in (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
-            .values) {
-      print(i);
-    }
-    // String json =
-    //     '{"__type":"FindPeopleJsonRequest:#Exchange","Header":{"__type":"JsonRequestHeaders:#Exchange","RequestServerVersion":"Exchange2013","TimeZoneContext":{"__type":"TimeZoneContext:#Exchange","TimeZoneDefinition":{"__type":"TimeZoneDefinitionType:#Exchange","Id":"Romance Standard Time"}}},"Body":{"__type":"FindPeopleRequest:#Exchange","IndexedPageItemView":{"__type":"IndexedPageView:#Exchange","BasePoint":"Beginning","Offset":0},"QueryString":"$query","AggregationRestriction":{"__type":"RestrictionType:#Exchange","Item":{"__type":"Or:#Exchange","Items":[{"__type":"Exists:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaEmailAddress"}},{"__type":"IsEqualTo:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaType"},"FieldURIOrConstant":{"__type":"FieldURIOrConstantType:#Exchange","Item":{"__type":"Constant:#Exchange","Value":"DistributionList"}}}]}},"PersonaShape":{"__type":"PersonaResponseShape:#Exchange","BaseShape":"Default","AdditionalProperties":[{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaAttributions"}]},"ShouldResolveOneOffEmailAddress":true,"SearchPeopleSuggestionIndex":false,"Context":[{"__type":"ContextProperty:#Exchange","Key":"AppName","Value":"OWA"},{"__type":"ContextProperty:#Exchange","Key":"AppScenario","Value":"NewMail.To"},{"__type":"ContextProperty:#Exchange","Key":"ClientSessionId","Value":""}]}}';
-    Map<String, String> headers = {
-      'User-Agent':
-          'Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0',
-      'Accept': '*/*',
-      'Action': 'FindPeople',
-      'Origin': 'https://mail.univ-lyon1.fr',
-      'Accept-Language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Content-Type': 'application/json; charset=utf-8',
-      'X-Requested-With': 'XMLHttpRequest',
-      'X-OWA-ActionName': 'ComposeForms',
-      'X-OWA-CANARY':
-          (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
-              .values
-              .firstWhere((element) {
-        print(element);
-        return element.name == "X-OWA-CANARY";
-      }).value,
-      // 'Cookie': (await _cookieJar.loadForRequest(Uri.parse(_baseUrl)))
-      //     .map((e) => e.value + "; ")
-      //     .toString()
-      //     .replaceAll("(", "")
-      //     .replaceAll(")", ""),
-      // 'X-OWA-CANARY':
-      //     'byLRE7qKHUqDTB90N9k5H6AQ-dgGo9oIMFy1JBbKZmT2n17RRMFZaCXKlV2QqWG2G2-vtU8CltE.',
-      // 'Cookie':
-      //     'X-BackEndCookie=S-1-5-21-1644491937-813497703-1060284298-2231958=u56Lnp2ejJqBm8rHys3HnpvSnsuextLLxsqc0p7Gz8vSnsbOm8aZy8qbzZnMgYHNz83N0s7P0szPq87Ixc7OxcvM; tarteaucitron=!addthis=true; ClientId=F57F75FD17B14CF988F43004C5F0E200; X-OWA-JS-PSD=1; PrivateComputer=true; PBack=0; AppcacheVer=15.2.986.29:fr-frbase; cadata=PGVNxhKvlIuyDUJT5ycn/oUYY1onedFy9oae4uX0GULQK9C72PsKcBVAI7/3kdnD9/5PLQ9I5llJlfWfAFGnue6TUoKLB3jCcDAhXKJd37LazKWA6h2ReN+nhF+4vyLw6BXim9C7Q2rj/YmQogb7wA==; cadataTTL=slivx8OTnlcViQvBSkrCXA==; cadataKey=jVDhG7xkQc573NE6wmGQM9yh4Cerbpa38PgwMqHYWCbrG/RqFc/aDDmtTx+H3yjqvsNzdxm8FaNJEJ3mx8S9JbFbrSTcrt1+Id8Uef7g4hNM0eR51rH2ZYCEG4QKW+gLzZesdhOXf0qn3pK/U6bmB/ZVpVDph3BP5RTvSBYjf4aDDv+Sx/HrBasEistbT+ENBahCXl0MdiYKQXplO5p512xfdf2NPio5wL6AnWmFhwmqYoduYTlb74s4DIbdgxmrPNIPqMKXlbCcxkqSJre7Z0X/EEKZF+Vn4pffgQlcCadBGnJFLSzjCcwwvazVO1qpGKGC9rvb8zlk78pwgBxvKw==; cadataIV=Ssp2mEFrUG8EfIK2q9HtM7ffNug7uzNMgpWkX+W4IjvMDMr0Qm53n9gTmOLb+EfsK2pAsEhR4tFqflpGP5At7B5w8K83m5Dve//myArFUHqe56n382tG9Etd7JEff2CCbiMcp/L/wGTqFoEhGBv05Dsu/31fUCGh4ayeECD7jMoiwa8eBcK/nOTGPQ5bZHXsUvQQxZ7cvwZZunkI4SWkvzveIL2C5ufbF5iXSa1VQUI6ryzQQXDkj2O9L2bXVJeLIRRT12gPCx36AUMxVE0gHp8YSuhQWECl5sGMCI2esIPIvMDar7xXJDckfq7CLcTiI6JjdrEs+7PIYSLxSiZ7og==; cadataSig=yxtTjkCepTxob47xGAmtyPyh2vLH/VOQyosCOY8R44U=; UC=c36563a5422f4778854aca4f3913338b; X-OWA-CANARY=byLRE7qKHUqDTB90N9k5H6AQ-dgGo9oIMFy1JBbKZmT2n17RRMFZaCXKlV2QqWG2G2-vtU8CltE.; offline=0; IsClientAppCacheEnabled=true',
-      // 'Cookie': _cookies,
-    };
-
-    var url = Uri.parse(_contactUrl);
-    var data =
-        '{"__type":"FindPeopleJsonRequest:#Exchange","Header":{"__type":"JsonRequestHeaders:#Exchange","RequestServerVersion":"Exchange2013","TimeZoneContext":{"__type":"TimeZoneContext:#Exchange","TimeZoneDefinition":{"__type":"TimeZoneDefinitionType:#Exchange","Id":"Romance Standard Time"}}},"Body":{"__type":"FindPeopleRequest:#Exchange","IndexedPageItemView":{"__type":"IndexedPageView:#Exchange","BasePoint":"Beginning","Offset":0},"QueryString":"' +
-            query +
-            '","AggregationRestriction":{"__type":"RestrictionType:#Exchange","Item":{"__type":"Or:#Exchange","Items":[{"__type":"Exists:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaEmailAddress"}},{"__type":"IsEqualTo:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaType"},"FieldURIOrConstant":{"__type":"FieldURIOrConstantType:#Exchange","Item":{"__type":"Constant:#Exchange","Value":"DistributionList"}}}]}},"PersonaShape":{"__type":"PersonaResponseShape:#Exchange","BaseShape":"Default","AdditionalProperties":[{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaAttributions"}]},"ShouldResolveOneOffEmailAddress":true,"SearchPeopleSuggestionIndex":false,"Context":[{"__type":"ContextProperty:#Exchange","Key":"AppName","Value":"OWA"},{"__type":"ContextProperty:#Exchange","Key":"AppScenario","Value":"NewMail.To"},{"__type":"ContextProperty:#Exchange","Key":"ClientSessionId","Value":""}]}}';
-    http.Response response = await http.post(url, headers: headers, body: data);
-    print(response.body);
-    print(response.statusCode);
-    print(response.body);
-
-    return "error";
+  Future<void> logout() async {
+    await _client.logout();
+    await Requests.get(_logoutUrl, headers: makeHeader());
   }
 
   int get nbMessage => _nbMessages;
