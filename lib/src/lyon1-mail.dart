@@ -3,9 +3,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:enough_mail/enough_mail.dart' hide Response;
 
-// import 'package:dio/dio.dart';
-// import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:http/http.dart';
 import 'package:http/http.dart' as http;
 import 'package:lyon1mail/src/model/address.dart';
 import 'package:requests/requests.dart';
@@ -60,7 +57,7 @@ class Lyon1Mail {
       'Sec-Fetch-Site': 'same-origin',
       'Sec-Fetch-User': '?1',
     };
-    Response reponse = await Requests.post(
+    await Requests.post(
       _loginUrl,
       headers: headers,
       body: {
@@ -74,8 +71,7 @@ class Lyon1Mail {
         "isUtf8": "1"
       },
     );
-
-    Response reponse2 = await Requests.get(
+   await Requests.get(
       "https://mail.univ-lyon1.fr/owa/",
     );
 
@@ -187,8 +183,8 @@ class Lyon1Mail {
             .values) {
       print(i);
     }
-    String json =
-        '{"__type":"FindPeopleJsonRequest:#Exchange","Header":{"__type":"JsonRequestHeaders:#Exchange","RequestServerVersion":"Exchange2013","TimeZoneContext":{"__type":"TimeZoneContext:#Exchange","TimeZoneDefinition":{"__type":"TimeZoneDefinitionType:#Exchange","Id":"Romance Standard Time"}}},"Body":{"__type":"FindPeopleRequest:#Exchange","IndexedPageItemView":{"__type":"IndexedPageView:#Exchange","BasePoint":"Beginning","Offset":0},"QueryString":"$query","AggregationRestriction":{"__type":"RestrictionType:#Exchange","Item":{"__type":"Or:#Exchange","Items":[{"__type":"Exists:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaEmailAddress"}},{"__type":"IsEqualTo:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaType"},"FieldURIOrConstant":{"__type":"FieldURIOrConstantType:#Exchange","Item":{"__type":"Constant:#Exchange","Value":"DistributionList"}}}]}},"PersonaShape":{"__type":"PersonaResponseShape:#Exchange","BaseShape":"Default","AdditionalProperties":[{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaAttributions"}]},"ShouldResolveOneOffEmailAddress":true,"SearchPeopleSuggestionIndex":false,"Context":[{"__type":"ContextProperty:#Exchange","Key":"AppName","Value":"OWA"},{"__type":"ContextProperty:#Exchange","Key":"AppScenario","Value":"NewMail.To"},{"__type":"ContextProperty:#Exchange","Key":"ClientSessionId","Value":""}]}}';
+    // String json =
+    //     '{"__type":"FindPeopleJsonRequest:#Exchange","Header":{"__type":"JsonRequestHeaders:#Exchange","RequestServerVersion":"Exchange2013","TimeZoneContext":{"__type":"TimeZoneContext:#Exchange","TimeZoneDefinition":{"__type":"TimeZoneDefinitionType:#Exchange","Id":"Romance Standard Time"}}},"Body":{"__type":"FindPeopleRequest:#Exchange","IndexedPageItemView":{"__type":"IndexedPageView:#Exchange","BasePoint":"Beginning","Offset":0},"QueryString":"$query","AggregationRestriction":{"__type":"RestrictionType:#Exchange","Item":{"__type":"Or:#Exchange","Items":[{"__type":"Exists:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaEmailAddress"}},{"__type":"IsEqualTo:#Exchange","Item":{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaType"},"FieldURIOrConstant":{"__type":"FieldURIOrConstantType:#Exchange","Item":{"__type":"Constant:#Exchange","Value":"DistributionList"}}}]}},"PersonaShape":{"__type":"PersonaResponseShape:#Exchange","BaseShape":"Default","AdditionalProperties":[{"__type":"PropertyUri:#Exchange","FieldURI":"PersonaAttributions"}]},"ShouldResolveOneOffEmailAddress":true,"SearchPeopleSuggestionIndex":false,"Context":[{"__type":"ContextProperty:#Exchange","Key":"AppName","Value":"OWA"},{"__type":"ContextProperty:#Exchange","Key":"AppScenario","Value":"NewMail.To"},{"__type":"ContextProperty:#Exchange","Key":"ClientSessionId","Value":""}]}}';
     Map<String, String> headers = {
       'User-Agent':
           'Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0',
