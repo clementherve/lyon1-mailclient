@@ -1,8 +1,8 @@
-// ignore_for_file: file_names
+// ignore_for_file: file_names, depend_on_referenced_packages
 
 import 'package:dartz/dartz.dart';
 import 'package:enough_mail/enough_mail.dart' hide Response;
-import 'package:http/http.dart';
+import 'package:http/http.dart' show Response;
 import 'package:lyon1mail/src/model/address.dart';
 import 'package:lyon1mail/src/model/header_model.dart';
 import 'package:lyon1mail/src/model/query_model.dart';
@@ -23,9 +23,9 @@ class Lyon1Mail {
   // CookieJar _cookieJar = CookieJar();
 
   static const String _baseUrl = "https://mail.univ-lyon1.fr/owa/";
-  static const String _loginUrl = _baseUrl + "auth.owa";
-  static const String _contactUrl = _baseUrl + "service.svc?action=FindPeople";
-  static const String _logoutUrl = _baseUrl + "logoff.owa";
+  static const String _loginUrl = "${_baseUrl}auth.owa";
+  static const String _contactUrl = "${_baseUrl}service.svc?action=FindPeople";
+  static const String _logoutUrl = "${_baseUrl}logoff.owa";
 
   Lyon1Mail(final String username, final String password) {
     _client = ImapClient(isLogEnabled: false);
@@ -98,8 +98,9 @@ class Lyon1Mail {
     fetchSequence.addRange(mailbox.messagesExists - (start ?? 0),
         mailbox.messagesExists - end + 1);
 
-    final SearchImapResult? unseenSearch =
-        !unreadOnly ? null : await _client.searchMessages('UNSEEN');
+    final SearchImapResult? unseenSearch = !unreadOnly
+        ? null
+        : await _client.searchMessages(searchCriteria: 'UNSEEN');
 
     final List<Mail> mails = [];
     final fetchResult = await _client.fetchMessages(
