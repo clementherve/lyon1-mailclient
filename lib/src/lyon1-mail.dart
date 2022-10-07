@@ -151,7 +151,7 @@ class Lyon1Mail {
     if (!_client.isLoggedIn) {
       return;
     }
-
+    await _client.selectInbox();
     final MessageSequence sequence = MessageSequence();
     sequence.add(id);
     _client.markSeen(sequence);
@@ -161,6 +161,7 @@ class Lyon1Mail {
     if (!_client.isLoggedIn) {
       return;
     }
+    await _client.selectInbox();
     final MessageSequence sequence = MessageSequence();
     sequence.add(id);
     _client.markUnseen(sequence);
