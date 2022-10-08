@@ -1,8 +1,6 @@
 import 'dart:math';
 
-import 'package:enough_mail/mail_address.dart';
-import 'package:enough_mail/message_flags.dart';
-import 'package:enough_mail/mime_message.dart';
+import 'package:enough_mail/enough_mail.dart';
 
 class Mail {
   final MimeMessage _originalMessage;
@@ -28,10 +26,10 @@ class Mail {
   String getReceiver() {
     String receiver = "";
     for (MailAddress i in _originalMessage.to!) {
-      receiver += i.email + ", ";
+      receiver += "${i.email}, ";
     }
     receiver = receiver.substring(0, receiver.length - 2);
-    return receiver ?? "n/a";
+    return receiver;
   }
 
   DateTime getDate() {

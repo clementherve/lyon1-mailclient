@@ -6,4 +6,9 @@ class Address {
 
   get email => _email;
   get name => _name;
+
+  @override
+  String toString(){
+    return "$name : $email";
+  }
 }
