@@ -116,10 +116,14 @@ class Lyon1Mail {
   Future<void> reply({
     Address? sender,
     bool replyAll = false,
-    required MimeMessage originalMessage,
+    required int originalMessageId,
     required String subject,
     required String body,
   }) async {
+    MimeMessage originalMessage = (await _client.fetchMessage(originalMessageId,
+            '(FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[])'))
+        .messages
+        .first;
     final builder = MessageBuilder.prepareReplyToMessage(
       originalMessage,
       originalMessage.from!.first,
@@ -186,13 +190,13 @@ class Lyon1Mail {
   }
 
   Future<Address?> resolveContact(String query) async {
-    Iterable<Cookie> cookies = (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
-        .values;
+    Iterable<Cookie> cookies =
+        (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
+            .values;
     Response response = await Requests.post(
       _contactUrl,
       headers: makeHeader(
-        canary:
-            cookies.firstWhere((element) {
+        canary: cookies.firstWhere((element) {
           return element.name == "X-OWA-CANARY";
         }).value,
         action: 'FindPeople',

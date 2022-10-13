@@ -106,8 +106,7 @@ void main() {
     expect(mailsBeforeDeletion.isNotEmpty, true);
 
     await mailClient.reply(
-      // from: MailAddress("name", mailsBeforeDeletion.first.getSender()),
-      originalMessage: mailsBeforeDeletion.first.getOriginalMessage,
+      originalMessageId: mailsBeforeDeletion.first.getSequenceId()!,
       body: "respone body",
       subject: "response subject",
       sender: Address(env['email']!, 'nom de test'),
@@ -122,9 +121,8 @@ void main() {
     expect(mailsAfterDeletion.isNotEmpty, true);
     expect(mailsAfterDeletion.first.getSequenceId() == latestMessageId, true);
     expect(
-        mailsAfterDeletion.first.getBody(excerpt: false).contains(mailsBeforeDeletion.first
-            .getBody(excerpt: false)
-            .substring(
+        mailsAfterDeletion.first.getBody(excerpt: false).contains(
+            mailsBeforeDeletion.first.getBody(excerpt: false).substring(
                 0, mailsBeforeDeletion.first.getBody().length - 1)), //remove \r
         true);
     await mailClient.logout();
