@@ -19,9 +19,6 @@ class Lyon1Mail {
   late String _mailboxName;
   late Address emailAddress;
 
-  // Dio _dio = Dio();
-  // CookieJar _cookieJar = CookieJar();
-
   static const String _baseUrl = "https://mail.univ-lyon1.fr/owa/";
   static const String _loginUrl = "${_baseUrl}auth.owa";
   static const String _contactUrl = "${_baseUrl}service.svc?action=FindPeople";
@@ -116,6 +113,27 @@ class Lyon1Mail {
         .toList());
   }
 
+  Future<void> reply({
+    Address? sender,
+    bool replyAll = false,
+    required MimeMessage originalMessage,
+    required String subject,
+    required String body,
+  }) async {
+    final builder = MessageBuilder.prepareReplyToMessage(
+      originalMessage,
+      originalMessage.from!.first,
+      replyAll: replyAll,
+      quoteOriginalText: true,
+      replyToSimplifyReferences: true,
+    )..from = [
+        MailAddress((sender != null) ? sender.name : emailAddress.name,
+            (sender != null) ? sender.email : emailAddress.email)
+      ];
+    builder.text = body + "\n\n" + (builder.text ?? "");
+    await _client.appendMessage(builder.buildMimeMessage());
+  }
+
   Future<void> sendEmail({
     Address? sender,
     required List<Address> recipients,
@@ -168,13 +186,13 @@ class Lyon1Mail {
   }
 
   Future<Address?> resolveContact(String query) async {
+    Iterable<Cookie> cookies = (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
+        .values;
     Response response = await Requests.post(
       _contactUrl,
       headers: makeHeader(
         canary:
-            (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
-                .values
-                .firstWhere((element) {
+            cookies.firstWhere((element) {
           return element.name == "X-OWA-CANARY";
         }).value,
         action: 'FindPeople',

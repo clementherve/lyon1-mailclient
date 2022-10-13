@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dotenv/dotenv.dart';// show env, isEveryDefined, load;
+import 'package:dotenv/dotenv.dart';
 import 'package:lyon1mail/lyon1mail.dart';
 import 'package:test/test.dart';
 
@@ -73,10 +73,7 @@ void main() {
     }
 
     expect(
-        (await mailClient.fetchMessages(10))
-            .getOrElse(() => [])
-            .first
-            .isSeen(),
+        (await mailClient.fetchMessages(10)).getOrElse(() => []).first.isSeen(),
         !isFirstMailSeen);
 
     await mailClient.logout();
@@ -97,6 +94,39 @@ void main() {
         (await mailClient.fetchMessages(1)).getOrElse(() => []);
     expect(mailsAfterDeletion.isNotEmpty, true);
     expect(mailsAfterDeletion.first.getSequenceId() != latestMessageId, true);
+    await mailClient.logout();
+  });
+
+  test('reply one email to self', () async {
+    await sendDummyMail();
+
+    await mailClient.login();
+    final List<Mail> mailsBeforeDeletion =
+        (await mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsBeforeDeletion.isNotEmpty, true);
+
+    await mailClient.reply(
+      // from: MailAddress("name", mailsBeforeDeletion.first.getSender()),
+      originalMessage: mailsBeforeDeletion.first.getOriginalMessage,
+      body: "respone body",
+      subject: "response subject",
+      sender: Address(env['email']!, 'nom de test'),
+      replyAll: false,
+    );
+
+    final int latestMessageId = mailsBeforeDeletion.first.getSequenceId()!;
+    await mailClient.delete(latestMessageId);
+
+    final List<Mail> mailsAfterDeletion =
+        (await mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsAfterDeletion.isNotEmpty, true);
+    expect(mailsAfterDeletion.first.getSequenceId() == latestMessageId, true);
+    expect(
+        mailsAfterDeletion.first.getBody(excerpt: false).contains(mailsBeforeDeletion.first
+            .getBody(excerpt: false)
+            .substring(
+                0, mailsBeforeDeletion.first.getBody().length - 1)), //remove \r
+        true);
     await mailClient.logout();
   });
 
