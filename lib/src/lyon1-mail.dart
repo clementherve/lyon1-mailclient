@@ -62,7 +62,7 @@ class Lyon1Mail {
     await Requests.get(
       "https://mail.univ-lyon1.fr/owa/",
     ); //get canary cookies
-    emailAddress = (await resolveContact(_username))!;
+    emailAddress = (await resolveContact(_username)).first;
     return _client.isLoggedIn;
   }
 
@@ -134,7 +134,7 @@ class Lyon1Mail {
         MailAddress((sender != null) ? sender.name : emailAddress.name,
             (sender != null) ? sender.email : emailAddress.email)
       ];
-    builder.text = body + "\n\n" + (builder.text ?? "");
+    builder.text = "$body\n\n${builder.text ?? ""}";
     await _client.appendMessage(builder.buildMimeMessage());
   }
 
@@ -189,7 +189,7 @@ class Lyon1Mail {
     _client.markUnseen(sequence);
   }
 
-  Future<Address?> resolveContact(String query) async {
+  Future<List<Address>> resolveContact(String query) async {
     Iterable<Cookie> cookies =
         (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
             .values;
@@ -205,14 +205,16 @@ class Lyon1Mail {
       bodyEncoding: RequestBodyEncoding.JSON,
     );
     if (response.json()['Body']['ResponseClass'] == "Success") {
-      return Address(
-          response.json()['Body']['ResultSet'].first['EmailAddress']
-              ['EmailAddress'],
-          response.json()['Body']['ResultSet'].first['GivenName'] +
-              " " +
-              response.json()['Body']['ResultSet'].first['Surname']);
+      List<Address> addresses = [];
+      for (var item in response.json()['Body']['ResultSet']) {
+        addresses.add(Address(
+          item['EmailAddress']['EmailAddress'],
+          item['GivenName'] + " " + item['Surname'],
+        ));
+      }
+      return addresses;
     }
-    return null;
+    return [];
   }
 
   Future<void> logout() async {

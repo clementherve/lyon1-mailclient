@@ -130,8 +130,8 @@ void main() {
 
   test('resolve contact', () async {
     await mailClient.login();
-    Address? email = (await mailClient.resolveContact(username));
-    expect(email!.email, emailAddress);
+    Address? email = (await mailClient.resolveContact(username)).first;
+    expect(email.email, emailAddress);
   });
 
   test('delete latest email', () async {
