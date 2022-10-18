@@ -98,7 +98,7 @@ void main() {
   });
 
   test('send one email to another person', () async {
-    await sendDummyMail("clement.herve69@gmail.com");
+    await sendDummyMail("");
     // todo
   });
 
