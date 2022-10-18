@@ -8,12 +8,12 @@ void main() {
   late Lyon1Mail mailClient;
   DotEnv env = DotEnv(includePlatformEnvironment: true);
 
-  Future<void> sendDummyMail() async {
+  Future<void> sendDummyMail(final String recipientEmail) async {
     await mailClient.login();
     await mailClient.sendEmail(
       sender: Address(env['email']!, 'nom de test'),
       recipients: [
-        Address(env['email']!, 'nom de test 2'),
+        Address(recipientEmail, 'nom de test 2'),
       ],
       subject: 'test',
       body: 'bodytest',
@@ -80,7 +80,7 @@ void main() {
   });
 
   test('send one email to self', () async {
-    await sendDummyMail();
+    await sendDummyMail(env['email']!);
 
     await mailClient.login();
     final List<Mail> mailsBeforeDeletion =
@@ -97,8 +97,13 @@ void main() {
     await mailClient.logout();
   });
 
+  test('send one email to another person', () async {
+    await sendDummyMail("clement.herve69@gmail.com");
+    // todo
+  });
+
   test('reply one email to self', () async {
-    await sendDummyMail();
+    await sendDummyMail(env['email']!);
 
     await mailClient.login();
     final List<Mail> mailsBeforeDeletion =
@@ -135,7 +140,8 @@ void main() {
   });
 
   test('delete latest email', () async {
-    await sendDummyMail(); // to make sure we dont delete important mails :)
+    await sendDummyMail(
+        env['email']!); // to make sure we dont delete important mails :)
 
     await mailClient.login();
     final List<Mail> mailsBeforeDeletion =

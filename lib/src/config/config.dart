@@ -7,5 +7,5 @@ class Lyon1MailConfig {
 
   static const String smtpHost = "smtpbv.$base";
   static const int smtpPort = 587;
-  static const bool smtpSecure = true;
+  static const bool smtpSecure = false;
 }

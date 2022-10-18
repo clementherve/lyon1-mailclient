@@ -13,6 +13,7 @@ import 'model/mail.dart';
 
 class Lyon1Mail {
   late ImapClient _client;
+  late SmtpClient _smtpClient;
   late String _username;
   late String _password;
   late int _nbMessages;
@@ -26,6 +27,7 @@ class Lyon1Mail {
 
   Lyon1Mail(final String username, final String password) {
     _client = ImapClient(isLogEnabled: false);
+    _smtpClient = SmtpClient("univ-lyon1.fr");
     _username = username;
     _password = password;
   }
@@ -34,8 +36,16 @@ class Lyon1Mail {
     await _client.connectToServer(
         Lyon1MailConfig.imapHost, Lyon1MailConfig.imapPort,
         isSecure: Lyon1MailConfig.imapSecure);
-
     await _client.login(_username, _password);
+
+    // smtp client
+    await _smtpClient.connectToServer(
+        Lyon1MailConfig.smtpHost, Lyon1MailConfig.smtpPort,
+        isSecure: Lyon1MailConfig.smtpSecure);
+
+    await _smtpClient.ehlo();
+    await _smtpClient.startTls();
+    await _smtpClient.authenticate(_username, _password, AuthMechanism.login);
 
     await Requests.post(
       _loginUrl,
@@ -144,18 +154,27 @@ class Lyon1Mail {
     required String subject,
     required String body,
   }) async {
-    await _client.selectInbox();
+    // await _client.selectInbox();
 
-    final builder = MessageBuilder.prepareMultipartAlternativeMessage()
-      ..subject = subject
-      ..text = body
-      ..from = [
-        MailAddress((sender != null) ? sender.name : emailAddress.name,
-            (sender != null) ? sender.email : emailAddress.email)
-      ]
-      ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
+    // final MessageBuilder builder =
+    //     MessageBuilder.prepareMultipartAlternativeMessage()
+    //       ..subject = subject
+    //       ..text = body
+    //       ..from = [
+    //         MailAddress((sender != null) ? sender.name : emailAddress.name,
+    //             (sender != null) ? sender.email : emailAddress.email)
+    //       ]
+    //       ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
 
-    await _client.appendMessage(builder.buildMimeMessage());
+    MimeMessage message = MimeMessage.parseFromText("ceci est un test");
+    SmtpResponse response = await _smtpClient.sendMessage(message,
+        from: MailAddress((sender != null) ? sender.name : emailAddress.name,
+            (sender != null) ? sender.email : emailAddress.email),
+        recipients:
+            recipients.map((e) => MailAddress(e.name, e.email)).toList());
+
+    print(response);
+    print(response.code);
   }
 
   // untested yet
