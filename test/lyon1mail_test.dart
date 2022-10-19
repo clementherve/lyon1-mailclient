@@ -98,8 +98,7 @@ void main() {
   });
 
   test('send one email to another person', () async {
-    await sendDummyMail("");
-    // todo
+    await sendDummyMail(env['other_email']!);
   });
 
   test('reply one email to self', () async {

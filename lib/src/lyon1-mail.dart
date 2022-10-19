@@ -148,33 +148,24 @@ class Lyon1Mail {
     await _client.appendMessage(builder.buildMimeMessage());
   }
 
-  Future<void> sendEmail({
+  Future<bool> sendEmail({
     Address? sender,
     required List<Address> recipients,
     required String subject,
     required String body,
   }) async {
-    // await _client.selectInbox();
+    final MimeMessage message = MimeMessage.parseFromText(body);
 
-    // final MessageBuilder builder =
-    //     MessageBuilder.prepareMultipartAlternativeMessage()
-    //       ..subject = subject
-    //       ..text = body
-    //       ..from = [
-    //         MailAddress((sender != null) ? sender.name : emailAddress.name,
-    //             (sender != null) ? sender.email : emailAddress.email)
-    //       ]
-    //       ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
+    final SmtpResponse response = await _smtpClient.sendMessage(
+      message,
+      from: MailAddress(
+        (sender != null) ? sender.name : emailAddress.name,
+        (sender != null) ? sender.email : emailAddress.email,
+      ),
+      recipients: recipients.map((e) => MailAddress(e.name, e.email)).toList(),
+    );
 
-    MimeMessage message = MimeMessage.parseFromText("ceci est un test");
-    SmtpResponse response = await _smtpClient.sendMessage(message,
-        from: MailAddress((sender != null) ? sender.name : emailAddress.name,
-            (sender != null) ? sender.email : emailAddress.email),
-        recipients:
-            recipients.map((e) => MailAddress(e.name, e.email)).toList());
-
-    print(response);
-    print(response.code);
+    return response.isOkStatus;
   }
 
   // untested yet
