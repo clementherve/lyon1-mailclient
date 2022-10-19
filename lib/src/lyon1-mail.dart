@@ -1,6 +1,7 @@
 // ignore_for_file: file_names, depend_on_referenced_packages
 
 import 'package:dartz/dartz.dart';
+import 'package:dartz/dartz_streaming.dart';
 import 'package:enough_mail/enough_mail.dart' hide Response;
 import 'package:http/http.dart' show Response;
 import 'package:lyon1mail/src/model/address.dart';
@@ -154,14 +155,18 @@ class Lyon1Mail {
     required String subject,
     required String body,
   }) async {
-    final MimeMessage message = MimeMessage.parseFromText(body);
+    final MessageBuilder messageBuilder =
+        MessageBuilder.prepareMultipartAlternativeMessage()
+          ..subject = subject
+          ..text = body
+          ..from = [
+            MailAddress((sender != null) ? sender.name : emailAddress.name,
+                (sender != null) ? sender.email : emailAddress.email)
+          ]
+          ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
 
     final SmtpResponse response = await _smtpClient.sendMessage(
-      message,
-      from: MailAddress(
-        (sender != null) ? sender.name : emailAddress.name,
-        (sender != null) ? sender.email : emailAddress.email,
-      ),
+      messageBuilder.buildMimeMessage(),
       recipients: recipients.map((e) => MailAddress(e.name, e.email)).toList(),
     );
 
