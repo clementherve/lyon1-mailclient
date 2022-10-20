@@ -7,6 +7,8 @@ class Mail {
 
   Mail(this._originalMessage);
 
+  MimeMessage get getOriginalMessage => _originalMessage;
+
   String getSubject() {
     return _originalMessage.decodeSubject() ?? "";
   }

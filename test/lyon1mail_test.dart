@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dotenv/dotenv.dart';// show env, isEveryDefined, load;
+import 'package:dotenv/dotenv.dart';
 import 'package:lyon1mail/lyon1mail.dart';
 import 'package:test/test.dart';
 
@@ -8,12 +8,12 @@ void main() {
   late Lyon1Mail mailClient;
   DotEnv env = DotEnv(includePlatformEnvironment: true);
 
-  Future<void> sendDummyMail() async {
+  Future<bool> sendDummyMail(final String recipientEmail) async {
     await mailClient.login();
-    await mailClient.sendEmail(
+    return await mailClient.sendEmail(
       sender: Address(env['email']!, 'nom de test'),
       recipients: [
-        Address(env['email']!, 'nom de test 2'),
+        Address(recipientEmail, 'nom de test 2'),
       ],
       subject: 'test',
       body: 'bodytest',
@@ -73,17 +73,14 @@ void main() {
     }
 
     expect(
-        (await mailClient.fetchMessages(10))
-            .getOrElse(() => [])
-            .first
-            .isSeen(),
+        (await mailClient.fetchMessages(10)).getOrElse(() => []).first.isSeen(),
         !isFirstMailSeen);
 
     await mailClient.logout();
   });
 
   test('send one email to self', () async {
-    await sendDummyMail();
+    await sendDummyMail(env['email']!);
 
     await mailClient.login();
     final List<Mail> mailsBeforeDeletion =
@@ -100,14 +97,52 @@ void main() {
     await mailClient.logout();
   });
 
+  test('send one email to another person', () async {
+    await sendDummyMail(env['other_email']!);
+  });
+
+  test('reply one email to self', () async {
+    await sendDummyMail(env['email']!);
+
+    await mailClient.login();
+    final List<Mail> mailsBeforeDeletion =
+        (await mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsBeforeDeletion.isNotEmpty, true);
+
+    final bool responseStatus = await mailClient.reply(
+      originalMessageId: mailsBeforeDeletion.first.getSequenceId()!,
+      body: "response body",
+      subject: "response subject",
+      sender: Address(env['email']!, 'nom de test'),
+      replyAll: false,
+    );
+
+    expect(responseStatus, true);
+
+    final int latestMessageId = mailsBeforeDeletion.first.getSequenceId()!;
+    await mailClient.delete(latestMessageId);
+
+    final List<Mail> mailsAfterDeletion =
+        (await mailClient.fetchMessages(1)).getOrElse(() => []);
+    expect(mailsAfterDeletion.isNotEmpty, true);
+    expect(mailsAfterDeletion.first.getSequenceId() == latestMessageId, true);
+    expect(
+        mailsAfterDeletion.first.getBody(excerpt: false).contains(
+            mailsBeforeDeletion.first.getBody(excerpt: false).substring(
+                0, mailsBeforeDeletion.first.getBody().length - 1)), //remove \r
+        true);
+    await mailClient.logout();
+  });
+
   test('resolve contact', () async {
     await mailClient.login();
-    Address? email = (await mailClient.resolveContact(username));
-    expect(email!.email, emailAddress);
+    Address? email = (await mailClient.resolveContact(username)).first;
+    expect(email.email, emailAddress);
   });
 
   test('delete latest email', () async {
-    await sendDummyMail(); // to make sure we dont delete important mails :)
+    await sendDummyMail(
+        env['email']!); // to make sure we dont delete important mails :)
 
     await mailClient.login();
     final List<Mail> mailsBeforeDeletion =

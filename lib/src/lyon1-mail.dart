@@ -1,6 +1,7 @@
 // ignore_for_file: file_names, depend_on_referenced_packages
 
 import 'package:dartz/dartz.dart';
+import 'package:dartz/dartz_streaming.dart';
 import 'package:enough_mail/enough_mail.dart' hide Response;
 import 'package:http/http.dart' show Response;
 import 'package:lyon1mail/src/model/address.dart';
@@ -13,14 +14,12 @@ import 'model/mail.dart';
 
 class Lyon1Mail {
   late ImapClient _client;
+  late SmtpClient _smtpClient;
   late String _username;
   late String _password;
   late int _nbMessages;
   late String _mailboxName;
   late Address emailAddress;
-
-  // Dio _dio = Dio();
-  // CookieJar _cookieJar = CookieJar();
 
   static const String _baseUrl = "https://mail.univ-lyon1.fr/owa/";
   static const String _loginUrl = "${_baseUrl}auth.owa";
@@ -29,6 +28,7 @@ class Lyon1Mail {
 
   Lyon1Mail(final String username, final String password) {
     _client = ImapClient(isLogEnabled: false);
+    _smtpClient = SmtpClient("univ-lyon1.fr");
     _username = username;
     _password = password;
   }
@@ -37,8 +37,16 @@ class Lyon1Mail {
     await _client.connectToServer(
         Lyon1MailConfig.imapHost, Lyon1MailConfig.imapPort,
         isSecure: Lyon1MailConfig.imapSecure);
-
     await _client.login(_username, _password);
+
+    // smtp client
+    await _smtpClient.connectToServer(
+        Lyon1MailConfig.smtpHost, Lyon1MailConfig.smtpPort,
+        isSecure: Lyon1MailConfig.smtpSecure);
+
+    await _smtpClient.ehlo();
+    await _smtpClient.startTls();
+    await _smtpClient.authenticate(_username, _password, AuthMechanism.login);
 
     await Requests.post(
       _loginUrl,
@@ -65,7 +73,7 @@ class Lyon1Mail {
     await Requests.get(
       "https://mail.univ-lyon1.fr/owa/",
     ); //get canary cookies
-    emailAddress = (await resolveContact(_username))!;
+    emailAddress = (await resolveContact(_username)).first;
     return _client.isLoggedIn;
   }
 
@@ -116,24 +124,59 @@ class Lyon1Mail {
         .toList());
   }
 
-  Future<void> sendEmail({
+  Future<bool> reply({
+    Address? sender,
+    bool replyAll = false,
+    required int originalMessageId,
+    required String subject,
+    required String body,
+  }) async {
+    final MimeMessage originalMessage = (await _client.fetchMessage(
+            originalMessageId,
+            '(FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[])'))
+        .messages
+        .first;
+    final MessageBuilder messageBuilder = MessageBuilder.prepareReplyToMessage(
+      originalMessage,
+      originalMessage.from!.first,
+      replyAll: replyAll,
+      quoteOriginalText: true,
+      replyToSimplifyReferences: true,
+    )..from = [
+        MailAddress((sender != null) ? sender.name : emailAddress.name,
+            (sender != null) ? sender.email : emailAddress.email)
+      ];
+    messageBuilder.text = "$body\n\n${messageBuilder.text ?? ""}";
+
+    final SmtpResponse response = await _smtpClient.sendMessage(
+      messageBuilder.buildMimeMessage(),
+    );
+
+    return response.isOkStatus;
+  }
+
+  Future<bool> sendEmail({
     Address? sender,
     required List<Address> recipients,
     required String subject,
     required String body,
   }) async {
-    await _client.selectInbox();
+    final MessageBuilder messageBuilder =
+        MessageBuilder.prepareMultipartAlternativeMessage()
+          ..subject = subject
+          ..text = body
+          ..from = [
+            MailAddress((sender != null) ? sender.name : emailAddress.name,
+                (sender != null) ? sender.email : emailAddress.email)
+          ]
+          ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
 
-    final builder = MessageBuilder.prepareMultipartAlternativeMessage()
-      ..subject = subject
-      ..text = body
-      ..from = [
-        MailAddress((sender != null) ? sender.name : emailAddress.name,
-            (sender != null) ? sender.email : emailAddress.email)
-      ]
-      ..to = recipients.map((e) => MailAddress(e.name, e.email)).toList();
+    final SmtpResponse response = await _smtpClient.sendMessage(
+      messageBuilder.buildMimeMessage(),
+      recipients: recipients.map((e) => MailAddress(e.name, e.email)).toList(),
+    );
 
-    await _client.appendMessage(builder.buildMimeMessage());
+    return response.isOkStatus;
   }
 
   // untested yet
@@ -167,14 +210,14 @@ class Lyon1Mail {
     _client.markUnseen(sequence);
   }
 
-  Future<Address?> resolveContact(String query) async {
+  Future<List<Address>> resolveContact(String query) async {
+    Iterable<Cookie> cookies =
+        (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
+            .values;
     Response response = await Requests.post(
       _contactUrl,
       headers: makeHeader(
-        canary:
-            (await Requests.getStoredCookies(Requests.getHostname(_baseUrl)))
-                .values
-                .firstWhere((element) {
+        canary: cookies.firstWhere((element) {
           return element.name == "X-OWA-CANARY";
         }).value,
         action: 'FindPeople',
@@ -183,14 +226,16 @@ class Lyon1Mail {
       bodyEncoding: RequestBodyEncoding.JSON,
     );
     if (response.json()['Body']['ResponseClass'] == "Success") {
-      return Address(
-          response.json()['Body']['ResultSet'].first['EmailAddress']
-              ['EmailAddress'],
-          response.json()['Body']['ResultSet'].first['GivenName'] +
-              " " +
-              response.json()['Body']['ResultSet'].first['Surname']);
+      List<Address> addresses = [];
+      for (var item in response.json()['Body']['ResultSet']) {
+        addresses.add(Address(
+          item['EmailAddress']['EmailAddress'],
+          item['GivenName'] + " " + item['Surname'],
+        ));
+      }
+      return addresses;
     }
-    return null;
+    return [];
   }
 
   Future<void> logout() async {
