@@ -8,9 +8,9 @@ void main() {
   late Lyon1Mail mailClient;
   DotEnv env = DotEnv(includePlatformEnvironment: true);
 
-  Future<void> sendDummyMail(final String recipientEmail) async {
+  Future<bool> sendDummyMail(final String recipientEmail) async {
     await mailClient.login();
-    await mailClient.sendEmail(
+    return await mailClient.sendEmail(
       sender: Address(env['email']!, 'nom de test'),
       recipients: [
         Address(recipientEmail, 'nom de test 2'),
@@ -109,13 +109,15 @@ void main() {
         (await mailClient.fetchMessages(1)).getOrElse(() => []);
     expect(mailsBeforeDeletion.isNotEmpty, true);
 
-    await mailClient.reply(
+    final bool responseStatus = await mailClient.reply(
       originalMessageId: mailsBeforeDeletion.first.getSequenceId()!,
-      body: "respone body",
+      body: "response body",
       subject: "response subject",
       sender: Address(env['email']!, 'nom de test'),
       replyAll: false,
     );
+
+    expect(responseStatus, true);
 
     final int latestMessageId = mailsBeforeDeletion.first.getSequenceId()!;
     await mailClient.delete(latestMessageId);

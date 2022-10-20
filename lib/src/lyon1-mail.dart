@@ -124,18 +124,19 @@ class Lyon1Mail {
         .toList());
   }
 
-  Future<void> reply({
+  Future<bool> reply({
     Address? sender,
     bool replyAll = false,
     required int originalMessageId,
     required String subject,
     required String body,
   }) async {
-    MimeMessage originalMessage = (await _client.fetchMessage(originalMessageId,
+    final MimeMessage originalMessage = (await _client.fetchMessage(
+            originalMessageId,
             '(FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[])'))
         .messages
         .first;
-    final builder = MessageBuilder.prepareReplyToMessage(
+    final MessageBuilder messageBuilder = MessageBuilder.prepareReplyToMessage(
       originalMessage,
       originalMessage.from!.first,
       replyAll: replyAll,
@@ -145,8 +146,13 @@ class Lyon1Mail {
         MailAddress((sender != null) ? sender.name : emailAddress.name,
             (sender != null) ? sender.email : emailAddress.email)
       ];
-    builder.text = "$body\n\n${builder.text ?? ""}";
-    await _client.appendMessage(builder.buildMimeMessage());
+    messageBuilder.text = "$body\n\n${messageBuilder.text ?? ""}";
+
+    final SmtpResponse response = await _smtpClient.sendMessage(
+      messageBuilder.buildMimeMessage(),
+    );
+
+    return response.isOkStatus;
   }
 
   Future<bool> sendEmail({
